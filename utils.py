@@ -1,4 +1,6 @@
 """"""
+from typing import TextIO
+
 LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
@@ -70,3 +72,18 @@ def print_pretty(data: list) -> None:
             result.append(item)
 
         print('  '.join(result))
+
+
+def get_log_numbers_as_dict(file_: TextIO, hand: str = "django.request") -> dict:
+    """На вход получает объект файла и формирует словарь с указанием количества
+    записей для каждого уровня логирования и для каждого url"""
+    log_numbers_dict = {}
+    for line in file_:
+        line = line.split()
+        if line[3].startswith(hand):
+            handler = get_handler(line)
+            log_level = get_log_level(line)
+            handler_dict = log_numbers_dict.setdefault(handler, dict.fromkeys(LOG_LEVELS, 0))
+            handler_dict.setdefault(log_level, 0)
+            handler_dict[log_level] += 1
+    return log_numbers_dict

@@ -1,13 +1,20 @@
 import argparse
+import multiprocessing as mp
 
 from utils import (
-    get_handler,
-    get_log_level,
     merge_files_metrics,
     reformat_report_for_out,
     print_pretty,
-    LOG_LEVELS
+    get_log_numbers_as_dict
 )
+
+
+def process_file(file_name: str, shared_list: list) -> None:
+    """Обработка лог файлов"""
+    with open(file_name, "r") as file:
+        log_numbers = get_log_numbers_as_dict(file)
+        shared_list.append(log_numbers)
+
 
 parser = argparse.ArgumentParser(description='Формирование отчета по данным из указанных лог файлов')
 parser.add_argument('log_files', nargs="*", help='лог файлы')
@@ -21,28 +28,32 @@ parser.add_argument(
 my_namespace = parser.parse_args()
 log_files = my_namespace.log_files
 
-hand = "django.request"
-metrics_per_file_list = []
 
-for log_file in log_files:
-    with open(log_file, "r") as file:
-        lines = file.readlines()
-        log_metrics = {}
-        for line in lines:
-            line = line.split()
-            if line[3].startswith(hand):
-                handler = get_handler(line)
-                log_level = get_log_level(line)
-                handler_dict = log_metrics.setdefault(handler, dict.fromkeys(LOG_LEVELS, 0))
-                handler_dict.setdefault(log_level, 0)
-                handler_dict[log_level] += 1
-        metrics_per_file_list.append(log_metrics)
+def main():
+    with mp.Manager() as manager:
+        shared_list = manager.list()
+        pool = mp.Pool(mp.cpu_count())
+        jobs = []
 
-total_metrics = merge_files_metrics(metrics_per_file_list)
+        for log_file in log_files:
+            jobs.append(pool.apply_async(process_file, (log_file, shared_list)))
 
-res = reformat_report_for_out(total_metrics, my_namespace.report)
+        for job in jobs:
+            job.get()
 
-total_requests = sum(res[-1][1:-1])
+        pool.close()
 
-print(f"Total requests: {total_requests}\n")
-print_pretty(res)
+        log_numbers_per_file_list = list(shared_list)
+
+    common_file_with_logs_numbers = merge_files_metrics(log_numbers_per_file_list)
+
+    res = reformat_report_for_out(common_file_with_logs_numbers, my_namespace.report)
+
+    total_requests = sum(res[-1][1:-1])
+
+    print(f"Total requests: {total_requests}\n")
+    print_pretty(res)
+
+
+if __name__ == "__main__":
+    main()
