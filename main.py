@@ -2,10 +2,10 @@ import argparse
 import multiprocessing as mp
 
 from utils import (
-    merge_files_metrics,
+    merge_logs_numbers_dicts,
     reformat_report_for_out,
     print_pretty,
-    get_log_numbers_as_dict
+    get_log_numbers_as_dict,
 )
 
 
@@ -16,10 +16,12 @@ def process_file(file_name: str, shared_list: list) -> None:
         shared_list.append(log_numbers)
 
 
-parser = argparse.ArgumentParser(description='Формирование отчета по данным из указанных лог файлов')
-parser.add_argument('log_files', nargs="*", help='лог файлы')
+parser = argparse.ArgumentParser(
+    description="Формирование отчета по данным из указанных лог файлов"
+)
+parser.add_argument("log_files", nargs="*", help="лог файлы")
 parser.add_argument(
-    '--report',
+    "--report",
     type=str,
     default="handlers",
     help="имя отчета"
@@ -36,7 +38,11 @@ def main():
         jobs = []
 
         for log_file in log_files:
-            jobs.append(pool.apply_async(process_file, (log_file, shared_list)))
+            jobs.append(
+                pool.apply_async(
+                    process_file,
+                    (log_file, shared_list))
+            )
 
         for job in jobs:
             job.get()
@@ -45,9 +51,12 @@ def main():
 
         log_numbers_per_file_list = list(shared_list)
 
-    common_file_with_logs_numbers = merge_files_metrics(log_numbers_per_file_list)
+    common_logs_numbers = merge_logs_numbers_dicts(log_numbers_per_file_list)
 
-    res = reformat_report_for_out(common_file_with_logs_numbers, my_namespace.report)
+    res = reformat_report_for_out(
+        common_logs_numbers,
+        my_namespace.report
+    )
 
     total_requests = sum(res[-1][1:-1])
 

@@ -1,4 +1,5 @@
 """"""
+
 from typing import TextIO
 
 LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -16,13 +17,15 @@ def get_log_level(line: list) -> str:
     return line[2]
 
 
-def merge_files_metrics(metrics_list: list[dict]) -> dict:
-    """Возвращает объединенный файл !!!!"""
+def merge_logs_numbers_dicts(metrics_list: list[dict]) -> dict:
+    """Объединяет несколько словарей в один словарь"""
 
     metrics_of_all_files = {}
     for file_metrics in metrics_list:
         for key in file_metrics:
-            handler_dict = metrics_of_all_files.setdefault(key, dict.fromkeys(LOG_LEVELS, 0))
+            handler_dict = metrics_of_all_files.setdefault(
+                key, dict.fromkeys(LOG_LEVELS, 0)
+            )
             for level, number in file_metrics[key].items():
                 handler_dict.setdefault(level, 0)
                 handler_dict[level] += number
@@ -40,16 +43,16 @@ def reformat_report_for_out(report_dict: dict, report_type: str) -> list:
         cur_line_elems.append(sum(cur_line_elems[1:]))
         res.append(cur_line_elems)
 
-    res.insert(0, [report_type.upper(), *LOG_LEVELS, ''])
+    res.insert(0, [report_type.upper(), *LOG_LEVELS, ""])
 
     t_sum = [0 for _ in range(len(LOG_LEVELS))]
-    t_sum.insert(0, '')
+    t_sum.insert(0, "")
 
     for elem in res[1:]:
         for i in range(1, len(elem) - 1):
             t_sum[i] += elem[i]
 
-    t_sum.append('')
+    t_sum.append("")
     res.append(t_sum)
 
     return res
@@ -71,10 +74,13 @@ def print_pretty(data: list) -> None:
             item = str(data[row][col]).ljust(col_width[col])
             result.append(item)
 
-        print('  '.join(result))
+        print("  ".join(result))
 
 
-def get_log_numbers_as_dict(file_: TextIO, hand: str = "django.request") -> dict:
+def get_log_numbers_as_dict(
+        file_: TextIO,
+        hand: str = "django.request"
+) -> dict:
     """На вход получает объект файла и формирует словарь с указанием количества
     записей для каждого уровня логирования и для каждого url"""
     log_numbers_dict = {}
@@ -83,7 +89,9 @@ def get_log_numbers_as_dict(file_: TextIO, hand: str = "django.request") -> dict
         if line[3].startswith(hand):
             handler = get_handler(line)
             log_level = get_log_level(line)
-            handler_dict = log_numbers_dict.setdefault(handler, dict.fromkeys(LOG_LEVELS, 0))
+            handler_dict = log_numbers_dict.setdefault(
+                handler, dict.fromkeys(LOG_LEVELS, 0)
+            )
             handler_dict.setdefault(log_level, 0)
             handler_dict[log_level] += 1
     return log_numbers_dict
